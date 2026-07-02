@@ -1,20 +1,14 @@
----
-name: web-clone
-description: >
-  网站复刻 / 克隆方法论。USE WHEN 用户说 复刻网站、克隆网站、clone website、抄个站、仿站、
-  照着这个站做一个、reproduce site、还原某个网页效果、把这个站搬下来改成我的、
-  复刻某个交互/WebGL/Canvas/Three.js 效果。提供「先拿真源码 → 判路径 → 逆向拆解 →
-  搭工程 → 替换内容」的可移植决策树，覆盖静态站 / React-Vue-Next 内容站 /
-  WebGL-Canvas 重前端站三大分支，并强制核对任何 AI 二手分析里的可执行代码。
-metadata:
-  author: jane (xiaoer)
-  version: "1.6.0"
-  use_case: 个人本地复刻/学习网站，沉淀自 website-clones 克隆中枢
----
-
 # Web Clone · 网站复刻方法论
 
 [English](SKILL.md) · **中文**
+
+> 📄 本文件是英文 `SKILL.md` 的中文参考版，仅供查阅。**实际加载生效的是英文 `SKILL.md`**；为避免被 skill 加载器重复注册，本文件刻意不带触发用的 YAML frontmatter。
+>
+> **原始 frontmatter（存档，仅供参考）**
+> - `name`: web-clone
+> - `version`: 1.6.0 · `author`: jane (xiaoer)
+> - `use_case`: 个人本地复刻/学习网站，沉淀自 website-clones 克隆中枢
+> - `description`（触发语）: 网站复刻 / 克隆方法论。USE WHEN 用户说 复刻网站、克隆网站、clone website、抄个站、仿站、照着这个站做一个、reproduce site、还原某个网页效果、把这个站搬下来改成我的、复刻某个交互/WebGL/Canvas/Three.js 效果。提供「先拿真源码 → 判路径 → 逆向拆解 → 搭工程 → 替换内容」的可移植决策树，覆盖静态站 / React-Vue-Next 内容站 / WebGL-Canvas 重前端站三大分支，并强制核对任何 AI 二手分析里的可执行代码。
 
 把"复刻一个网站"做成可重复的流程。配套工程区：`~/projects/website-clones/`（每个复刻是一个子目录）。
 
