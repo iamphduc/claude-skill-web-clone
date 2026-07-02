@@ -1,243 +1,250 @@
 ---
 name: web-clone
 description: >
-  网站复刻 / 克隆方法论。USE WHEN 用户说 复刻网站、克隆网站、clone website、抄个站、仿站、
-  照着这个站做一个、reproduce site、还原某个网页效果、把这个站搬下来改成我的、
-  复刻某个交互/WebGL/Canvas/Three.js 效果。提供「先拿真源码 → 判路径 → 逆向拆解 →
-  搭工程 → 替换内容」的可移植决策树，覆盖静态站 / React-Vue-Next 内容站 /
-  WebGL-Canvas 重前端站三大分支，并强制核对任何 AI 二手分析里的可执行代码。
+  Website cloning / reproduction methodology. USE WHEN the user says clone this
+  website, reproduce this site, copy this site, make one like this site, rebuild
+  a webpage's effect, mirror this site and make it mine, reverse-engineer some
+  interactive / WebGL / Canvas / Three.js effect — including the Chinese phrasings
+  复刻网站、克隆网站、抄个站、仿站、照着这个站做一个、还原某个网页效果、
+  把这个站搬下来改成我的、复刻某个交互/WebGL/Canvas/Three.js 效果. Provides a
+  portable decision tree — get the real source first → pick a path → reverse-engineer
+  → scaffold the project → swap in your content — covering the three branches of
+  static sites / React-Vue-Next content sites / WebGL-Canvas heavy frontends, and
+  enforces line-by-line verification of any executable code in a second-hand AI analysis.
 metadata:
   author: jane (xiaoer)
   version: "1.6.0"
-  use_case: 个人本地复刻/学习网站，沉淀自 website-clones 克隆中枢
+  use_case: Personal local cloning / study of websites, distilled from the website-clones clone hub
 ---
 
-# Web Clone · 网站复刻方法论
+# Web Clone
 
-把"复刻一个网站"做成可重复的流程。配套工程区：`~/projects/website-clones/`（每个复刻是一个子目录）。
+**English** · [中文](SKILL.zh-CN.md)
 
-## 头号铁律：真源码至上，绝不信 AI 推测的代码
+Turn "cloning a website" into a repeatable process. Companion project area: `~/projects/website-clones/` (each clone is a subdirectory).
 
-> 任何 AI 生成的"复刻分析/施工图"，**正文的概念骨架可以参考，但里面的可执行代码块默认全是臆造的**，必须逐行用真源码核对，否则照抄必崩。
+## Iron rule: real source first, never trust AI-guessed code
 
-**实证（marbles 案例）**：一份 AI 分析文档把原站"解析法求光线-球体交点 + 把光学结果编码成位移图、交给 SVG `feDisplacementMap` 去扭曲真实 DOM"的真架构，臆造成了"ray-marching + SDF + 把 DOM 当纹理采样"——两套完全不同的实现，照抄做不出原效果且慢 N 倍。详见 `references/marbles-case.md`。
+> For any AI-generated "clone analysis / blueprint", **you may reference the conceptual skeleton of the prose, but assume every executable code block in it is fabricated** until verified line by line against the real source — otherwise copying it will break.
 
-所以第一动作永远是：**拿到真源码**。
+**Case in point (the marbles case)**: an AI analysis document turned the site's real architecture — "analytic ray-sphere intersection + encode the optical result into a displacement map + hand it to an SVG `feDisplacementMap` to distort the real DOM" — into "ray-marching + SDF + sampling the DOM as a texture". Two entirely different implementations; copying it produces nothing like the original and runs many times slower. See `references/marbles-case.md`.
 
-## 决策树（按顺序走，不许跳）
+So the first action is always: **get the real source**.
 
-### Step 0 · 先建标准工程骨架
+## The decision tree (follow it in order, no skipping)
+
+### Step 0 · Build the standard project skeleton first
 
 ```bash
-node /Users/jane/.shared-skills/web-clone/scripts/init-clone.mjs <站名> --url <原站URL>
+node /Users/jane/.shared-skills/web-clone/scripts/init-clone.mjs <site> --url <source-url>
 ```
 
-该脚本会创建 `~/projects/website-clones/<站名>-clone/`、`NOTES.md`、`RECON/screenshots/`，避免每次手工漏掉产物。
+This script creates `~/projects/website-clones/<site>-clone/`, `NOTES.md`, and `RECON/screenshots/`, so you don't hand-miss deliverables each time.
 
-### Step 1 · 先去 GitHub 搜源码，别急着抓站
+### Step 1 · Search GitHub for the source first, don't rush to scrape
 
 ```bash
-unset SSL_CERT_FILE   # macOS 怪癖，bash 前先解
-# 按站名/产品名搜
-SSL_CERT_FILE=/etc/ssl/cert.pem gh api "search/repositories?q=<关键词>" \
+unset SSL_CERT_FILE   # macOS quirk, clear it before bash
+# search by site name / product name
+SSL_CERT_FILE=/etc/ssl/cert.pem gh api "search/repositories?q=<keyword>" \
   | jq -r '.items[] | "\(.full_name) ⭐\(.stargazers_count) \(.description)"' | head -10
-# vercel.app/netlify.app/github.io 的 URL slug 常常就是 仓库名 / 部署者用户名
+# a vercel.app/netlify.app/github.io URL slug is often the repo name / deployer's username
 ```
-- 单文件站（github.io / 纯 HTML）→ 直接抓 raw：`curl -sL https://raw.githubusercontent.com/<user>/<repo>/main/index.html`
-- **找到源码且许可允许 → 跳 Step 4 直接 clone。** 教训：先搜 GitHub 能省 30 分钟弯路。
+- Single-file site (github.io / plain HTML) → grab raw directly: `curl -sL https://raw.githubusercontent.com/<user>/<repo>/main/index.html`
+- **Source found and the license allows it → skip to Step 4 and clone directly.** Lesson: searching GitHub first can save 30 minutes of detours.
 
-### Step 2 · 没找到源码 → 浏览器侦察（探针）
+### Step 2 · No source found → browser recon (probes)
 
-加载 `Browser` skill 或 playwright MCP，跑探针抽信号（框架 / `window.THREE` / canvas 数 / 平滑滚动库 / 字体 / scrollHeight）。截图 1440/768/390 三档 + 侦察 JSON 存 `<站>/RECON/`。
+Load the `Browser` skill or the playwright MCP, run probes to extract signals (framework / `window.THREE` / canvas count / smooth-scroll library / fonts / scrollHeight). Save 1440/768/390 screenshots at three widths + recon JSON to `<site>/RECON/`.
 
-优先用内置脚本跑标准侦察：
+Prefer the built-in scripts to run the standard recon:
 
 ```bash
 node /Users/jane/.shared-skills/web-clone/scripts/recon-site.mjs \
-  --url <原站URL> \
-  --out ~/projects/website-clones/<站名>-clone/RECON \
+  --url <source-url> \
+  --out ~/projects/website-clones/<site>-clone/RECON \
   --label original
 
 node /Users/jane/.shared-skills/web-clone/scripts/asset-harvest.mjs \
-  --recon ~/projects/website-clones/<站名>-clone/RECON/original-recon.json \
-  --out ~/projects/website-clones/<站名>-clone/assets/original \
-  --manifest ~/projects/website-clones/<站名>-clone/RECON/asset-manifest.json
+  --recon ~/projects/website-clones/<site>-clone/RECON/original-recon.json \
+  --out ~/projects/website-clones/<site>-clone/assets/original \
+  --manifest ~/projects/website-clones/<site>-clone/RECON/asset-manifest.json
 
 node /Users/jane/.shared-skills/web-clone/scripts/network-capture.mjs \
-  --url <原站URL> \
-  --out ~/projects/website-clones/<站名>-clone/RECON/network \
+  --url <source-url> \
+  --out ~/projects/website-clones/<site>-clone/RECON/network \
   --label original
 
 node /Users/jane/.shared-skills/web-clone/scripts/route-crawl.mjs \
-  --url <原站URL> \
-  --out ~/projects/website-clones/<站名>-clone/RECON/routes \
+  --url <source-url> \
+  --out ~/projects/website-clones/<site>-clone/RECON/routes \
   --label original \
   --max-pages 25 \
   --max-depth 2
 
 node /Users/jane/.shared-skills/web-clone/scripts/interaction-probe.mjs \
-  --url <原站URL> \
-  --out ~/projects/website-clones/<站名>-clone/RECON/interactions \
+  --url <source-url> \
+  --out ~/projects/website-clones/<site>-clone/RECON/interactions \
   --label original
 
 node /Users/jane/.shared-skills/web-clone/scripts/sourcemap-hunt.mjs \
-  --recon ~/projects/website-clones/<站名>-clone/RECON/original-recon.json \
-  --out ~/projects/website-clones/<站名>-clone/RECON/sourcemaps
+  --recon ~/projects/website-clones/<site>-clone/RECON/original-recon.json \
+  --out ~/projects/website-clones/<site>-clone/RECON/sourcemaps
 ```
 
-> 登录态私域站才用 `bb-browser`；localhost / 无登录公开站用 `Browser` skill 或 playwright（别动 bb-browser，会抢 Brave）。
+> Only use `bb-browser` for logged-in / private sites; for localhost / public sites with no login use the `Browser` skill or playwright (don't touch bb-browser, it will hijack Brave).
 
-### Step 2.5 · 先给复杂度定级，别盲目承诺
+### Step 2.5 · Rate the complexity first, don't promise blindly
 
-根据侦察结果先写一版"复刻前预判"：复杂度 L1-L6、推荐模式（忠实复刻 / 视觉复刻 / 内容爆改）、预计可还原范围、明确不克隆的部分。分级和评分规则见 `references/assessment.md`。
+Based on the recon, write a first-pass "pre-clone assessment": complexity L1-L6, recommended mode (faithful clone / visual clone / content overhaul), the expected reproducible scope, and an explicit list of what won't be cloned. Grading and scoring rules are in `references/assessment.md`.
 
-**若模式是「视觉复刻」或「内容爆改」** → 顺手产出结构化设计身份 `design-dna.json`，把"那个站的感觉"变成可版本化、可对照的 token 规范，让 Step 6 替换时"DNA 留着、内容换掉"有据可依：
+**If the mode is "visual clone" or "content overhaul"** → produce the structured design identity `design-dna.json` along the way, turning "the feel of that site" into a versionable, comparable token spec, so that when Step 6 does the swap you have a basis for "keep the DNA, swap the content":
 
 ```bash
 node /Users/jane/.shared-skills/web-clone/scripts/dna-scaffold.mjs \
-  --recon ~/projects/website-clones/<站名>-clone/RECON/original-recon.json \
-  --out   ~/projects/website-clones/<站名>-clone/RECON/design-dna.json \
-  --name  "<站名>"
+  --recon ~/projects/website-clones/<site>-clone/RECON/original-recon.json \
+  --out   ~/projects/website-clones/<site>-clone/RECON/design-dna.json \
+  --name  "<site>"
 ```
 
-脚本会把侦察到的字体/色候选/框架特效信号 best-effort 预填，其余字段人工 Analyze 补全。三维结构（design_system / design_style / visual_effects）、完整 schema、适用边界见 `references/design-dna.md`。
-> ⚠️ **「忠实复刻」分支不要用 DNA**：真源码就是真相，别让"近似风格"的 DNA 稀释逐字节铁律。
+The script best-effort pre-fills the reconned fonts / color candidates / framework-effect signals, leaving the rest to be completed manually during Analyze. The three-axis structure (design_system / design_style / visual_effects), full schema, and applicability boundaries are in `references/design-dna.md`.
+> ⚠️ **Don't use DNA on the "faithful clone" branch**: the real source is the truth; don't let an "approximate style" DNA dilute the byte-for-byte iron rule.
 
-### Step 3 · 按侦察结果选路径
+### Step 3 · Pick a path based on the recon
 
-| 侦察结果 | 走哪条路 |
+| Recon result | Which path |
 |---|---|
-| 静态 HTML/CSS，无框架 | `wget --mirror` 抓镜像 → 删追踪脚本 → 改文案 |
-| React / Vue / Next（内容为主） | 重建模板（如 `ai-website-cloner-template`，Node 24+），灌内容 |
-| SPA / SaaS / 数据驱动页面 | 先跑 `network-capture.mjs` 保存 API fixtures → 本地 JSON/mock server 替身 |
-| 多页面官网 / 产品站 | 先跑 `route-crawl.mjs` 做路由地图 → 每类页面抽模板 → 统一替换内容 |
-| 复杂交互站 | 先跑 `interaction-probe.mjs` 记录 hover/click/scroll/canvas drag 状态 → 按状态补交互，不许只截首屏 |
-| **WebGL / Canvas / Three.js 重前端** | **深度逆向真源码（见下）→ 忠实复刻 或 找同类开源 3D 模板换内容**。单文件原生站常常逐字节保留=最忠实复刻。**找不到真源码时走运行时帧捕获 + baseline 闸门**，纪律见 `references/effect-extraction.md`（可委托 web-shader-extractor） |
-| **静态构建站（Astro/Vite SSG/Hugo），含重 WebGL** | **`mirror-site.mjs` 全量镜像部署资产 → 自托管字体 + 删追踪 → 本地 web 根服务 = 真源码 1:1 忠实复刻**。对静态站，"拿到真源码"="镜像部署资产整套"。配方见 `references/static-mirror.md`。范例：oryzo.ai（Lusion，L6，高斯泼溅，hero 像素 diff 5/5） |
-| 用现成开源主题的站（Astro/Hugo 主题） | 去对应主题市场找源主题（**仅限套用现成主题的站**；定制站走上一行的全量镜像，别来这行） |
+| Static HTML/CSS, no framework | `wget --mirror` to grab a mirror → delete tracking scripts → edit copy |
+| React / Vue / Next (content-driven) | Rebuild on a template (e.g. `ai-website-cloner-template`, Node 24+), pour in content |
+| SPA / SaaS / data-driven pages | Run `network-capture.mjs` first to save API fixtures → stand in with a local JSON/mock server |
+| Multi-page marketing / product site | Run `route-crawl.mjs` first to build a route map → extract a template per page type → swap content uniformly |
+| Complex interactive site | Run `interaction-probe.mjs` first to record hover/click/scroll/canvas-drag states → build interactions per state, don't just screenshot the first screen |
+| **WebGL / Canvas / Three.js heavy frontend** | **Deep-reverse-engineer the real source (see below) → faithful clone, or find a comparable open-source 3D template and swap content**. Single-file native sites are often kept byte-for-byte = the most faithful clone. **When no real source is findable, go runtime frame-capture + baseline gate**; discipline in `references/effect-extraction.md` (can be delegated to web-shader-extractor) |
+| **Static-built site (Astro/Vite SSG/Hugo), incl. heavy WebGL** | **`mirror-site.mjs` mirrors the full deployed assets → self-host fonts + strip tracking → serve from a local web root = a true 1:1 faithful clone of the real source**. For a static site, "get the real source" = "mirror the whole deployed bundle". Recipe in `references/static-mirror.md`. Example: oryzo.ai (Lusion, L6, Gaussian splatting, hero pixel diff 5/5) |
+| Site using an off-the-shelf open-source theme (Astro/Hugo theme) | Go to the corresponding theme market and find the source theme (**only for sites that apply a ready-made theme**; custom sites take the full-mirror row above, not this one) |
 
-L4-L6 复杂站按 `references/complex-playbooks.md` 走，不要只用普通官网流程。
+For L4-L6 complex sites, follow `references/complex-playbooks.md` — don't use the ordinary marketing-site flow.
 
-### Step 4 · 在克隆中枢里搭工程
+### Step 4 · Scaffold the project inside the clone hub
 
 ```bash
-mkdir ~/projects/website-clones/<站名>-clone && cd $_
-# git 源码：clone 进来；单文件：放进来。原始源码留一份只读基准 index-original.html
-# 检查 Node 版本（package.json engines），nvm use 对应版本，钉 .nvmrc
+mkdir ~/projects/website-clones/<site>-clone && cd $_
+# git source: clone it in; single-file: drop it in. Keep a read-only baseline index-original.html of the original source
+# check the Node version (package.json engines), nvm use the matching version, pin .nvmrc
 ```
 
-### Step 5 · 删追踪 + 写元信息 + 验证
+### Step 5 · Strip tracking + write metadata + verify
 
-- **删追踪**：Google Analytics（`gtag` / `googletagmanager`）、像素、热图——逐行精确切除（GA 块常在 `<head>` 顶部）。
-- **写 NOTES.md**（必须）：包含复杂度、复刻模式、原站 vs 克隆站对比、保真度评分、已知缺口。模板见 `references/deliverables.md`。
-- **复杂站写 TEARDOWN.md**（技术拆解）。所有结论标真源码行号。
-- **复刻后评分**：按 `references/assessment.md` 给结构 / 视觉 / 交互 / 响应式 / 内容替换 / 功能完整度打分。分数要能被截图、源码、运行结果支撑。
-- **浏览器真验证**（硬要求，不许只看代码就说"应该能跑"）：起本地服务器 → 浏览器打开 → 抓 console（不能有 JS/WebGL 编译错误）→ 截图对照原站。诚实记录验证不了的部分（如合成 PointerEvent `isTrusted=false` 触发不了拖拽，要如实写，别伪造"拖动成功"）。
+- **Strip tracking**: Google Analytics (`gtag` / `googletagmanager`), pixels, heatmaps — excise line by line precisely (the GA block is often at the top of `<head>`).
+- **Write NOTES.md** (mandatory): include complexity, clone mode, original-vs-clone comparison, fidelity scores, known gaps. Template in `references/deliverables.md`.
+- **Write TEARDOWN.md for complex sites** (technical teardown). Every conclusion tagged with a real source line number.
+- **Post-clone scoring**: score structure / visual / interaction / responsive / content-swap / functional-completeness per `references/assessment.md`. Scores must be supportable by screenshots, source, and run results.
+- **Real browser verification** (a hard requirement — you may not just read the code and say "it should run"): start a local server → open a browser → capture the console (no JS/WebGL compile errors) → screenshot against the original. Honestly record what you can't verify (e.g. a synthetic PointerEvent with `isTrusted=false` can't trigger the drag — write that down truthfully, don't fake a "drag succeeded").
 
-复刻完成后再跑一次克隆站侦察，并生成自动对比报告：
+After the clone is done, run the clone-site recon once more and generate an automatic comparison report:
 
 ```bash
 node /Users/jane/.shared-skills/web-clone/scripts/recon-site.mjs \
-  --url http://127.0.0.1:<端口>/ \
-  --out ~/projects/website-clones/<站名>-clone/RECON \
+  --url http://127.0.0.1:<port>/ \
+  --out ~/projects/website-clones/<site>-clone/RECON \
   --label clone
 
 node /Users/jane/.shared-skills/web-clone/scripts/route-crawl.mjs \
-  --url http://127.0.0.1:<端口>/ \
-  --out ~/projects/website-clones/<站名>-clone/RECON/routes-clone \
+  --url http://127.0.0.1:<port>/ \
+  --out ~/projects/website-clones/<site>-clone/RECON/routes-clone \
   --label clone \
   --max-pages 25 \
   --max-depth 2
 
 node /Users/jane/.shared-skills/web-clone/scripts/interaction-probe.mjs \
-  --url http://127.0.0.1:<端口>/ \
-  --out ~/projects/website-clones/<站名>-clone/RECON/interactions-clone \
+  --url http://127.0.0.1:<port>/ \
+  --out ~/projects/website-clones/<site>-clone/RECON/interactions-clone \
   --label clone
 
 node /Users/jane/.shared-skills/web-clone/scripts/compare-recon.mjs \
-  --original ~/projects/website-clones/<站名>-clone/RECON/original-recon.json \
-  --clone ~/projects/website-clones/<站名>-clone/RECON/clone-recon.json \
-  --visual-diff ~/projects/website-clones/<站名>-clone/RECON/visual-diff-1440.json \
-  --original-routes ~/projects/website-clones/<站名>-clone/RECON/routes/original-route-map.json \
-  --clone-routes ~/projects/website-clones/<站名>-clone/RECON/routes-clone/clone-route-map.json \
-  --original-interactions ~/projects/website-clones/<站名>-clone/RECON/interactions/original-interactions.json \
-  --clone-interactions ~/projects/website-clones/<站名>-clone/RECON/interactions-clone/clone-interactions.json \
-  --out ~/projects/website-clones/<站名>-clone/CLONE_REPORT.md
+  --original ~/projects/website-clones/<site>-clone/RECON/original-recon.json \
+  --clone ~/projects/website-clones/<site>-clone/RECON/clone-recon.json \
+  --visual-diff ~/projects/website-clones/<site>-clone/RECON/visual-diff-1440.json \
+  --original-routes ~/projects/website-clones/<site>-clone/RECON/routes/original-route-map.json \
+  --clone-routes ~/projects/website-clones/<site>-clone/RECON/routes-clone/clone-route-map.json \
+  --original-interactions ~/projects/website-clones/<site>-clone/RECON/interactions/original-interactions.json \
+  --clone-interactions ~/projects/website-clones/<site>-clone/RECON/interactions-clone/clone-interactions.json \
+  --out ~/projects/website-clones/<site>-clone/CLONE_REPORT.md
 
 node /Users/jane/.shared-skills/web-clone/scripts/visual-diff.mjs \
-  --original ~/projects/website-clones/<站名>-clone/RECON/screenshots/original-1440.png \
-  --clone ~/projects/website-clones/<站名>-clone/RECON/screenshots/clone-1440.png \
-  --out ~/projects/website-clones/<站名>-clone/RECON/visual-diff-1440.json \
-  --diff ~/projects/website-clones/<站名>-clone/RECON/screenshots/visual-diff-1440.png
+  --original ~/projects/website-clones/<site>-clone/RECON/screenshots/original-1440.png \
+  --clone ~/projects/website-clones/<site>-clone/RECON/screenshots/clone-1440.png \
+  --out ~/projects/website-clones/<site>-clone/RECON/visual-diff-1440.json \
+  --diff ~/projects/website-clones/<site>-clone/RECON/screenshots/visual-diff-1440.png
 
 node /Users/jane/.shared-skills/web-clone/scripts/audit-clone.mjs \
-  --project ~/projects/website-clones/<站名>-clone \
-  --brand "<原站品牌名>" \
-  --out ~/projects/website-clones/<站名>-clone/CLONE_AUDIT.md
+  --project ~/projects/website-clones/<site>-clone \
+  --brand "<brand>" \
+  --out ~/projects/website-clones/<site>-clone/CLONE_AUDIT.md
 ```
 
-### Step 6 · 替换成 Jane 自己的东西
+### Step 6 · Replace with Jane's own material
 
-目标永远是"做她自己的站"，不是搬一个一模一样的。替换三件套：文字（`index.html`/`data/*.json`/`content/*.md`）、媒体（`public`/`assets`）、品牌色（CSS 变量 / Tailwind theme）。结构非平凡就写 REPLACE_GUIDE.md。
+The goal is always "make her own site", not to carry over an identical copy. The three swap targets: text (`index.html`/`data/*.json`/`content/*.md`), media (`public`/`assets`), and brand colors (CSS variables / Tailwind theme). If the structure is non-trivial, write a REPLACE_GUIDE.md.
 
-**做过 `design-dna.json`（视觉/爆改模式）的**：这一步就是它的兑现——**DNA 留着、内容换掉**。把 `design_system` 落成 CSS 自定义属性、按 `design_style` 做主观取舍、按 `visual_effects.effect_intensity` 选实现层级（lightweight CSS / medium Canvas+GSAP / heavy Three.js）；素材优先用 `asset-harvest.mjs` 取原站真图，别 AI 重绘近似。生成流程见 `references/design-dna.md`。
+**If you produced a `design-dna.json` (visual/overhaul mode)**: this step is where it pays off — **keep the DNA, swap the content**. Realize `design_system` as CSS custom properties, make subjective choices per `design_style`, pick an implementation tier per `visual_effects.effect_intensity` (lightweight CSS / medium Canvas+GSAP / heavy Three.js); for assets, prefer pulling the original's real images via `asset-harvest.mjs` rather than having AI re-draw approximations. Generation flow in `references/design-dna.md`.
 
-## 逆向拆解 WebGL/Canvas 重前端（核心手艺）
+## Reverse-engineering WebGL/Canvas heavy frontends (the core craft)
 
-把交互站拆成**技术支柱**，逐柱定位真实实现 + 标行号：渲染（WebGL/着色器算法）、合成（SVG filter / 多 canvas / 后期）、物理、交互、音频。然后才去核对任何二手分析。
+Break an interactive site into **technical pillars**, and for each pillar locate the real implementation + tag line numbers: rendering (WebGL/shader algorithms), compositing (SVG filter / multi-canvas / post-processing), physics, interaction, audio. Only then verify against any second-hand analysis.
 
-**逆向特效时三件套纪律**（治"边抠边美化、最后既不像也说不清"）：
-1. **证据分级**：每条结论标 `SOURCE`（真源码/source-map/运行时 dump/帧捕获）、`PARTIAL`（名字/切片，待证）、`GUESS`（视觉拟合/魔数）。**未标=GUESS，照抄前必须升级到 SOURCE。**
-2. **no-compensation**：严禁靠调亮度/速度/位置/噪声去掩盖时序/坐标/状态错误；拟合值仍标 GUESS，写明要拿到什么证据才能升级。
-3. **baseline-first 闸门**：先用真实 draw call/shader/uniform 做"最小原样可复现 RAW REPLAY"→ 逐帧比对通过 → **才允许**重构工程化。
-详见 `references/effect-extraction.md`（含运行时捕获兜底 + 何时委托 web-shader-extractor）。
+**The three disciplines when reverse-engineering effects** (they cure "polishing while you extract, ending up neither faithful nor explainable"):
+1. **Evidence grading**: tag each conclusion `SOURCE` (real source / source-map / runtime dump / frame capture), `PARTIAL` (a name/slice, to be proven), or `GUESS` (visual fit / magic number). **Untagged = GUESS; it must be upgraded to SOURCE before copying.**
+2. **no-compensation**: it is forbidden to tweak brightness/speed/position/noise to mask timing/coordinate/state errors; a fitted value is still tagged GUESS, with a note on what evidence is needed to upgrade it.
+3. **baseline-first gate**: first do a "minimal, as-is reproducible RAW REPLAY" using real draw calls/shaders/uniforms → pass frame-by-frame comparison → **only then** are you allowed to refactor into an editable project.
+See `references/effect-extraction.md` (includes the runtime-capture fallback + when to delegate to web-shader-extractor).
 
-**可迁移的高级范式**（值得攒着）：
-- **位移图折射 DOM**：离屏 WebGL 算出 RG=位移/B=菲涅尔的"位移图"，再用 SVG `<filter><feDisplacementMap scale=N>` 拿它去扭曲真实的、活的、可交互的 HTML——折射的是真 DOM，WebGL 全程不碰 DOM 像素。这是 marbles 的灵魂，也是 Three.js `MeshPhysicalMaterial(transmission)` 做不到的事（它只能做"玻璃球外观"，做不出"折射整个网页"）。
+**Transferable advanced patterns** (worth saving up):
+- **Displacement-map refraction of the DOM**: offscreen WebGL computes a "displacement map" with RG=displacement / B=Fresnel, then an SVG `<filter><feDisplacementMap scale=N>` uses it to distort the real, live, interactive HTML — what's refracted is the real DOM, and WebGL never touches DOM pixels. This is the soul of marbles, and something Three.js `MeshPhysicalMaterial(transmission)` cannot do (it can only produce a "glass-ball look", not "refract the whole webpage").
 
-详细方法 + marbles 真架构逐项拆解 → `references/reverse-engineering.md`、`references/marbles-case.md`。
+Detailed method + item-by-item teardown of the marbles real architecture → `references/reverse-engineering.md`, `references/marbles-case.md`.
 
-## 许可与署名（clone 前必查）
+## License & attribution (check before you clone)
 
 ```bash
-SSL_CERT_FILE=/etc/ssl/cert.pem gh api repos/<u>/<r> | jq '.license'  # + 找 LICENSE 文件 + 看 README
+SSL_CERT_FILE=/etc/ssl/cert.pem gh api repos/<u>/<r> | jq '.license'  # + find the LICENSE file + read the README
 ```
 
-| 许可 | 能做什么 |
+| License | What you can do |
 |---|---|
-| MIT / Apache / BSD / Unlicense | 可改、可上线，保留致谢即可 |
-| **NONE（无 LICENSE 文件 / 未声明）** | **默认保留所有权利**。仅本地学习/复刻，须署名原作者，**未经许可不得公开重新部署**。别因为代码公开就当成可自由用 |
-| 专有 / 明确禁止 | 只读学习，不复制不部署 |
+| MIT / Apache / BSD / Unlicense | Modify, redeploy, just keep the credits |
+| **NONE (no LICENSE file / unstated)** | **All rights reserved by default**. Local study/cloning only, must credit the original author, **do not redeploy publicly without permission**. Don't treat "the code is public" as free to use |
+| Proprietary / explicitly forbidden | Read-only study, no copying, no deployment |
 
-⚠️ 别把"GitHub 上是公开的"或"gh api 一时查不到"等同于 MIT——核实到底。
+⚠️ Don't equate "it's public on GitHub" or "gh api couldn't find it right now" with MIT — verify it for real.
 
-## 产物规范
-- 每个子项目根目录：`NOTES.md`（源信息/技术栈/license/替换地图/跑起来命令）
-- 复杂交互站追加：`TEARDOWN.md`（技术拆解，标行号）
-- 需要对外汇报或评估 skill 效果时追加：`CLONE_REPORT.md`（原站 vs 克隆站完整对比）
-- 上线前追加：`CLONE_AUDIT.md`（追踪脚本、原站品牌/语言残留、TODO、外链风险）
-- `RECON/screenshots/`：原站 vs 克隆对照图
-- 复刻完更新中枢 `README.md` 索引行
+## Deliverable spec
+- Each subproject root: `NOTES.md` (source info / tech stack / license / replace map / run commands)
+- Complex interactive sites add: `TEARDOWN.md` (technical teardown, line numbers tagged)
+- When you need to report out or assess skill effectiveness, add: `CLONE_REPORT.md` (full original-vs-clone comparison)
+- Before going live, add: `CLONE_AUDIT.md` (tracking scripts, original brand/language residue, TODOs, external-link risks)
+- `RECON/screenshots/`: original-vs-clone comparison images
+- After cloning, update the hub `README.md` index line
 
-## 内置脚本
-- `scripts/init-clone.mjs`：初始化克隆项目骨架和 `NOTES.md`。
-- `scripts/recon-site.mjs`：用 Playwright 打开页面，采集框架/资源/DOM 结构/console 错误，并保存三档截图。
-- `scripts/asset-harvest.mjs`：从侦察 JSON 下载原站图片、脚本、样式并生成素材清单。
-- `scripts/network-capture.mjs`：捕获 XHR/fetch 请求并保存 JSON/text 响应，给 SPA/SaaS 做本地 fixtures。
-- `scripts/mirror-site.mjs`：真浏览器全程滚动捕获每一个真实请求 → 按路径镜像同源资产（含 JS 运行时 fetch 的 `.sog/.buf/.wasm/.riv`/字体），给静态构建站（Astro/Vite SSG/Hugo）做 1:1 忠实复刻。详见 `references/static-mirror.md`。
-- `scripts/route-crawl.mjs`：爬同站内部链接，按路由保存截图、标题、H1、结构信号，解决多页面站只复刻首页的问题。
-- `scripts/interaction-probe.mjs`：自动执行 scroll、hover、安全 click、canvas drag，保存交互前后状态、截图、网络和 console 证据。
-- `scripts/sourcemap-hunt.mjs`：从 JS chunk 里找 source map，能拿到就保存源码映射。
-- `scripts/compare-recon.mjs`：读取原站与克隆站的侦察 JSON、路由图、交互证据，生成 `CLONE_REPORT.md`。
-- `scripts/visual-diff.mjs`：用浏览器 canvas 做截图像素差异，输出 visual score 和差异图。
-- `scripts/audit-clone.mjs`：扫描追踪脚本、原站品牌残留、日文残留、TODO、外部 URL 风险。
-- `scripts/dna-scaffold.mjs`：从侦察 JSON 生成 `design-dna.json` 设计身份骨架（字体/色候选/框架特效信号 best-effort 预填），给「视觉复刻 / 内容爆改」模式用。详见 `references/design-dna.md`。
+## Built-in scripts
+- `scripts/init-clone.mjs`: initialize the clone project skeleton and `NOTES.md`.
+- `scripts/recon-site.mjs`: open the page with Playwright, collect framework/resource/DOM-structure/console-error signals, and save three screenshot widths.
+- `scripts/asset-harvest.mjs`: download the original's images, scripts, styles from the recon JSON and generate an asset manifest.
+- `scripts/network-capture.mjs`: capture XHR/fetch requests and save JSON/text responses as local fixtures for SPA/SaaS.
+- `scripts/mirror-site.mjs`: real-browser full-scroll capture of every real request → mirror same-origin assets by path (incl. JS-runtime-fetched `.sog/.buf/.wasm/.riv`/fonts), for a 1:1 faithful clone of static-built sites (Astro/Vite SSG/Hugo). See `references/static-mirror.md`.
+- `scripts/route-crawl.mjs`: crawl same-site internal links, save screenshot/title/H1/structure signals per route, solving the "multi-page site only cloned the homepage" problem.
+- `scripts/interaction-probe.mjs`: automatically perform scroll, hover, safe click, canvas drag, and save before/after states, screenshots, network and console evidence.
+- `scripts/sourcemap-hunt.mjs`: find source maps in the JS chunks and save the source mapping when available.
+- `scripts/compare-recon.mjs`: read the original and clone recon JSON, route maps, and interaction evidence, and generate `CLONE_REPORT.md`.
+- `scripts/visual-diff.mjs`: do screenshot pixel diffing via a browser canvas, output a visual score and a diff image.
+- `scripts/audit-clone.mjs`: scan for tracking scripts, original brand residue, Japanese residue, TODOs, and external-URL risks.
+- `scripts/dna-scaffold.mjs`: generate the `design-dna.json` design-identity skeleton from the recon JSON (best-effort pre-fill of fonts / color candidates / framework-effect signals), for "visual clone / content overhaul" mode. See `references/design-dna.md`.
 
-## 能力边界（默认口径）
-- **能高保真做**：静态营销页、企业官网、内容型 React/Vue/Next 前端、可直接拿到源码的动画站。
-- **能视觉还原但会简化**：CMS 后台数据、复杂滚动叙事、多端断点、WebGL/Canvas 特效、第三方嵌入。
-- **默认不承诺完整克隆**：登录、支付、下单、搜索推荐、权限系统、服务端业务逻辑、专有 API、受版权限制的素材。需要时只做可演示前端替身。
-- **内容爆改时**：优先保留原站的信息架构、节奏、动效和视觉语法，把文案、图片、品牌色、业务主张换成 Jane 自己的内容。
+## Capability boundaries (default stance)
+- **Can do at high fidelity**: static marketing pages, corporate sites, content-type React/Vue/Next frontends, animation sites whose source is directly obtainable.
+- **Can visually reproduce but will simplify**: CMS backend data, complex scroll storytelling, multi-device breakpoints, WebGL/Canvas effects, third-party embeds.
+- **Won't promise a full clone by default**: login, payment, checkout, search/recommendation, permission systems, server-side business logic, proprietary APIs, copyright-restricted assets. When needed, only build a demonstrable frontend stand-in.
+- **In content-overhaul mode**: prefer preserving the original's information architecture, rhythm, motion, and visual grammar, while swapping the copy, images, brand colors, and value proposition for Jane's own content.
 
-## 旗舰案例
-`~/projects/website-clones/marbles-clone/` — 原生 WebGL + SVG Filter + 自研物理的玻璃弹珠站，逐字节忠实复刻 + 完整 TEARDOWN，是"WebGL 重前端分支"的范例。
+## Flagship case
+`~/projects/website-clones/marbles-clone/` — a native WebGL + SVG Filter + hand-rolled physics glass-marbles site, cloned byte-for-byte + a full TEARDOWN, the exemplar of the "WebGL heavy-frontend branch".
