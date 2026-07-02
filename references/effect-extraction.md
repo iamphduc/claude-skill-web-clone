@@ -1,73 +1,75 @@
-# 特效提取的证据纪律 + Baseline 闸门（WebGL/Canvas 逆向分支强化）
+# Evidence Discipline + Baseline Gate for Effect Extraction (WebGL/Canvas reverse-engineering branch reinforcement)
 
-`reverse-engineering.md` 讲"怎么读懂渲染架构"；本篇讲**逆向特效时怎么不骗自己**，
-以及找不到真源码时的兜底路线。三件套：**证据分级 → no-compensation → baseline-first 闸门**。
+**English** · [中文](effect-extraction.zh-CN.md)
 
-> 纪律范式受 [lixiaolin94/skills · web-shader-extractor](https://github.com/lixiaolin94/skills) 启发（该仓库无 LICENSE，
-> 默认保留所有权利——这里**只借方法概念、全部用本 skill 自己的话重写，未复制其代码或原文**）。
-> 它和 web-clone 头号铁律「真源码至上」同魂，只是把"标行号"升级成了系统化的证据制度。
+`reverse-engineering.md` covers "how to read a rendering architecture"; this piece covers **how not to fool yourself when reverse-engineering effects**,
+plus the fallback route when the real source can't be found. The three-piece set: **evidence grading → no-compensation → baseline-first gate**.
 
-## 一、证据分级（每条结论都打标签）
+> The discipline paradigm is inspired by [lixiaolin94/skills · web-shader-extractor](https://github.com/lixiaolin94/skills) (that repo has no LICENSE,
+> so all rights reserved by default—here we **only borrow the methodological concepts, rewrite everything in this skill's own words, and copy none of its code or original text**).
+> It shares the same spirit as web-clone's number-one iron law "real source above all", just upgrading "cite line numbers" into a systematic evidence regime.
 
-写 TEARDOWN 时，渲染管线的每个关键事实都标一个级别，**默认按最低级算**：
+## 1. Evidence grading (tag every conclusion)
 
-| 标签 | 含义 | 例子 |
+When writing the TEARDOWN, tag every key fact in the render pipeline with a level, and **default to the lowest level**:
+
+| Tag | Meaning | Examples |
 |---|---|---|
-| `SOURCE` | 直接、绑定到目标的硬证据 | 公开真源码行、source-map 还原的模块、运行时对象 dump、抓到的 shader/WGSL 文本、帧捕获、带 hash 的网络响应体 |
-| `PARTIAL` | 下一步探针的把手，还不够定论 | 类/函数/字段名、minified bundle 切片、框架对象、拿到 shader 但缺 uniform/pass/输入状态 |
-| `GUESS` | 没有直接证据的重建值 | 视觉拟合、命名推断、套用默认值、手调魔数、任何"看起来对"的行为复原 |
+| `SOURCE` | Direct, hard evidence bound to the target | Public real-source lines, modules restored from source-map, runtime object dumps, captured shader/WGSL text, frame captures, network response bodies with hashes |
+| `PARTIAL` | A handle for the next probe, not yet conclusive | Class/function/field names, minified bundle slices, framework objects, got the shader but missing uniform/pass/input state |
+| `GUESS` | Reconstructed value with no direct evidence | Visual fitting, name-based inference, applied defaults, hand-tuned magic numbers, any "looks right" behavior reconstruction |
 
-- **未标 = 当 GUESS。** 别让没证据的东西混进"已知"。
-- 这是把 marbles 教训（"AI 把解析求交臆造成 ray-marching"）制度化：**凡是 GUESS 级的实现，照抄前必须先升级到 SOURCE。**
+- **Untagged = treat as GUESS.** Don't let unevidenced things slip into "known".
+- This institutionalizes the marbles lesson ("the AI fabricated analytic intersection into ray-marching"): **any GUESS-level implementation must be upgraded to SOURCE before it's copied verbatim.**
 
-## 二、no-compensation（不靠调参掩盖不懂）
+## 2. no-compensation (don't mask lack of understanding by tuning parameters)
 
-> **严禁**为了让画面"看起来对"，去改亮度 / 速度 / 位置 / 噪声值，来掩盖时序、颜色、FBO、资源、坐标系或状态模型上的真错误。
+> **Strictly forbidden**: changing brightness / speed / position / noise values just to make the image "look right", masking real errors in timing, color, FBO, resources, coordinate system, or state model.
 
-- 拟合出来的某个常数让输出更像了 → **它仍是 GUESS**，并写明"要拿到什么证据才能升级"。
-- 接线类事实（pass 顺序、坐标变换、时间单位、输入耦合）**不会因为画面像了就算对**，必须独立追到证据为止。
-- 对应 web-clone 老规矩：验证不了的如实写，**别伪造"拖动成功"**。
+- A fitted constant made the output more similar → **it's still a GUESS**, and write down "what evidence is needed to upgrade it".
+- Wiring-type facts (pass order, coordinate transforms, time units, input coupling) **do not become correct just because the image looks right**; they must be independently traced down to evidence.
+- Corresponds to the old web-clone rule: write down truthfully what you can't verify, **don't fake a "drag succeeded"**.
 
-## 三、baseline-first 闸门（先复现，再重构）
+## 3. baseline-first gate (reproduce first, then refactor)
 
-逆向特效时**最容易犯的错**是边抠边重写边美化，最后既不像原站也说不清哪步错了。改成分闸：
+The **most common mistake** when reverse-engineering effects is extracting, rewriting, and beautifying all at once, ending up neither resembling the original site nor able to say which step went wrong. Instead, split into gates:
 
 ```
-定位渲染面 → 捕获最小真相 → RAW REPLAY（原样最小复现）→ ✅BASELINE 逐帧比对通过
-                                                              ↓ 通过后才允许
-                                                        PROJECTIZE（重构成可编辑工程）→ PACKAGE
+Locate the render surface → capture the minimal truth → RAW REPLAY (minimal as-is reproduction) → ✅BASELINE frame-by-frame comparison passes
+                                                                                                    ↓ only allowed after passing
+                                                                                              PROJECTIZE (refactor into an editable project) → PACKAGE
 ```
 
-- **RAW REPLAY**：用抓到的真实 draw call / shader / uniform / 顶点数据，做一个**尽量小、尽量原样**的可运行复现，不优化、不换框架、不改参数。
-- **BASELINE 闸门**：RAW REPLAY 必须和原站逐帧（或多帧采样）视觉一致，才算过。**没过这道闸，不准进重构。**
-- 过闸后再 PROJECTIZE：换成可维护写法（raw WebGL / Three.js TSL / Babylon 等），每处仍标证据级别。
-- 收尾三态，如实标注：`DONE_BASELINE_VERIFIED`（复现且验证）/ `DONE_PROJECTIZED`（已工程化）/ `DONE_BASELINE_WITH_GAPS`（复现但有记录在案的缺口）。
+- **RAW REPLAY**: use the captured real draw calls / shaders / uniforms / vertex data to build an **as-small, as-as-is as possible** runnable reproduction—no optimizing, no swapping frameworks, no changing parameters.
+- **BASELINE gate**: the RAW REPLAY must be frame-by-frame (or multi-frame sampled) visually identical to the original site to count as passing. **Without passing this gate, refactoring is not permitted.**
+- Only after passing the gate, PROJECTIZE: switch to a maintainable form (raw WebGL / Three.js TSL / Babylon etc.), still tagging each spot's evidence level.
+- Three closing states, tag them truthfully: `DONE_BASELINE_VERIFIED` (reproduced and verified) / `DONE_PROJECTIZED` (projectized) / `DONE_BASELINE_WITH_GAPS` (reproduced but with documented gaps).
 
-## 四、找不到真源码时——运行时捕获兜底
+## 4. When the real source can't be found—runtime capture fallback
 
-web-clone 第一动作永远是"去 GitHub / source-map 找真源码"。但**特效站经常无源、minified 到底**。
-这时不要退回"看着像就照着写"（那是 GUESS），而是去**渲染边界抓运行时真相**：
+web-clone's first move is always "go to GitHub / source-map for the real source". But **effect sites are often sourceless, minified to the bone**.
+At that point don't fall back to "write it to look similar" (that's GUESS); instead **grab the runtime truth at the render boundary**:
 
-- 在 WebGL/WebGPU 上下文拦截：实际的 draw call、绑定的 program、编译过的 shader 源、uniform 值、FBO/纹理尺寸、blend/depth 状态。
-- 工具方向：spector.js 式的帧捕获、`WebGLRenderingContext` 原型打补丁记录调用、`getShaderSource` 拿编译后的 shader、preload script 在页面脚本前注入钩子。
-- 抓到的这些算 `SOURCE` 级——它们就是新的"真源码"，喂给 baseline-first 流程。
+- Intercept on the WebGL/WebGPU context: the actual draw calls, bound programs, compiled shader source, uniform values, FBO/texture sizes, blend/depth state.
+- Tooling direction: spector.js-style frame capture, patching the `WebGLRenderingContext` prototype to log calls, `getShaderSource` to get the compiled shader, a preload script to inject hooks before the page scripts run.
+- What you capture counts as `SOURCE` level—it is the new "real source", fed into the baseline-first flow.
 
-## 五、什么时候委托 web-shader-extractor
+## 5. When to delegate to web-shader-extractor
 
-如果你已经装了 `web-shader-extractor`（`npx skills add lixiaolin94/skills` 里的那个 skill），
-**遇到下面情况直接把特效那一段委托给它，web-clone 只当总入口**：
+If you've already installed `web-shader-extractor` (the skill from `npx skills add lixiaolin94/skills`),
+**in the following situations delegate the effect portion straight to it, with web-clone acting only as the overall entry point**:
 
-- 站是 WebGL/WebGPU/重 Canvas 特效，且 GitHub + source-map 都找不到真源码；
-- 需要运行时帧捕获、逐帧比对、shader/uniform 级别的抠取；
-- 想要"先 baseline 复现、再独立工程化"的完整带闸流程。
+- The site is WebGL/WebGPU/heavy-Canvas effects, and neither GitHub nor source-map yields the real source;
+- You need runtime frame capture, frame-by-frame comparison, shader/uniform-level extraction;
+- You want the full gated flow of "baseline reproduce first, then projectize independently".
 
-委托产物（最小可复现的 baseline + 证据包）拿回来后，**再并入 `~/projects/website-clones/<站名>-clone/`**，
-按 web-clone 的产物规范补 NOTES/TEARDOWN，并继续走 Step 5 验证 + Step 6 替换。
+Once the delegated output (a minimal reproducible baseline + evidence pack) comes back, **merge it into `~/projects/website-clones/<site-name>-clone/`**,
+fill in NOTES/TEARDOWN per web-clone's output conventions, and continue with Step 5 verification + Step 6 replacement.
 
-没装它也不影响：上面四节的纪律本身就能照着做，web-shader-extractor 只是把第四节的捕获机器做成了现成工具。
+Not having it installed doesn't matter either: the discipline of the four sections above can be followed as-is; web-shader-extractor just packages the capture machinery of section 4 into a ready-made tool.
 
-## 与既有产物的衔接
+## Integration with existing outputs
 
-- TEARDOWN.md 的"A. 真实技术拆解"每条加证据标签（`SOURCE`/`PARTIAL`/`GUESS`）。
-- "B. 二手分析校验表"本来就是在抓 GUESS 冒充 SOURCE，口径一致。
-- baseline 复现物建议留在 `<站名>-clone/RECON/baseline/`，和原始截图一起作为"验证过"的铁证。
+- Add an evidence tag (`SOURCE`/`PARTIAL`/`GUESS`) to each item in TEARDOWN.md's "A. Real technical teardown".
+- "B. Second-hand analysis check table" is already about catching GUESS masquerading as SOURCE—same framing.
+- Keep the baseline reproduction under `<site-name>-clone/RECON/baseline/`, alongside the original screenshots as ironclad proof of "verified".
