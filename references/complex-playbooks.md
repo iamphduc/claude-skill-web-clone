@@ -1,46 +1,48 @@
-# 复杂站复刻 Playbooks
+# Complex Site Cloning Playbooks
 
-用于 L4-L6 站点，目标是把"看起来复杂"拆成可执行路径。
+**English** · [中文](complex-playbooks.zh-CN.md)
 
-## L4 动画品牌站
+For L4-L6 sites; the goal is to break down "looks complex" into an executable path.
 
-1. `recon-site.mjs` 抓三档截图、sections、视频/canvas 数量。
-2. 记录滚动库信号：GSAP / Lenis / ScrollTrigger / Locomotive。
-3. 把页面拆成首屏、滚动叙事、视频蒙版、hover、过渡五类。
-4. 优先复刻节奏和视觉语法；微交互可近似，但必须在 `CLONE_REPORT.md` 标差异。
-5. 用 `visual-diff.mjs` 对首屏和关键滚动位置截图评分。
+## L4 Animated Brand Sites
+
+1. `recon-site.mjs` captures three-tier screenshots, sections, and video/canvas counts.
+2. Record scroll-library signals: GSAP / Lenis / ScrollTrigger / Locomotive.
+3. Split the page into five categories: hero, scroll narrative, video masks, hover, and transitions.
+4. Prioritize reproducing the rhythm and visual grammar; micro-interactions can be approximated, but differences must be flagged in `CLONE_REPORT.md`.
+5. Use `visual-diff.mjs` to score screenshots of the hero and key scroll positions.
 
 ## L5 WebGL / Canvas / Three.js
 
-1. 先找真源码、source map、公开 repo；找不到再逆向 bundle。
-2. `recon-site.mjs` 记录 canvas 尺寸、数量、框架信号。
-3. `sourcemap-hunt.mjs` 尝试下载 source map。
-4. 拆技术支柱：渲染、shader、后期、物理、交互、音频、资源加载。
-5. 复杂 shader 不盲写；先做最小可运行场景，再逐项补材质、光照、后期。
-6. 交互验证必须用浏览器实际操作或截图/视频证据，不能只看代码。
+1. First look for the real source code, source maps, and public repos; only reverse-engineer the bundle if none can be found.
+2. `recon-site.mjs` records canvas dimensions, counts, and framework signals.
+3. `sourcemap-hunt.mjs` attempts to download source maps.
+4. Break down the technical pillars: rendering, shaders, post-processing, physics, interaction, audio, and asset loading.
+5. Don't blindly write complex shaders; first build a minimal runnable scene, then add materials, lighting, and post-processing one at a time.
+6. Interaction verification must use actual browser operations or screenshot/video evidence — you can't rely on reading the code alone.
 
-## L6 SaaS / 电商 / 登录业务系统
+## L6 SaaS / E-commerce / Login-based Business Systems
 
-默认只克隆展示层和可演示流程，不承诺真实账号、支付、订单、权限。
+By default, only clone the presentation layer and demonstrable flows; do not promise real accounts, payments, orders, or permissions.
 
-1. 登录态公开页面先确认授权和隐私边界。
-2. `network-capture.mjs` 保存 XHR/fetch 响应作为 fixtures。
-3. 把接口分成：内容接口、搜索筛选、用户态、交易/写入。
-4. 内容接口可用本地 JSON 替身；交易/写入接口只做 mock 成功/失败状态。
-5. 保留空态、加载态、错误态、权限不足态，别只做 happy path。
-6. `audit-clone.mjs` 扫外链、原品牌残留和追踪脚本。
+1. For pages behind login, first confirm authorization and privacy boundaries.
+2. `network-capture.mjs` saves XHR/fetch responses as fixtures.
+3. Split the APIs into: content APIs, search/filter, user state, and transaction/write.
+4. Content APIs can use local JSON stand-ins; transaction/write APIs only mock success/failure states.
+5. Preserve empty, loading, error, and insufficient-permission states — don't just do the happy path.
+6. `audit-clone.mjs` scans for external links, original-brand residue, and tracking scripts.
 
-## 多页面 / CMS / 企业站
+## Multi-page / CMS / Enterprise Sites
 
-1. 先抓 sitemap、导航、页脚、主要模板。
-2. 只复刻代表性模板：主页、列表页、详情页、搜索/筛选页、联系页。
-3. 重复内容用数据文件生成，不逐页手写。
-4. CMS 后台不克隆；如需要编辑能力，用本地 JSON/Markdown 替代。
+1. First capture the sitemap, navigation, footer, and main templates.
+2. Only clone representative templates: home, list, detail, search/filter, and contact pages.
+3. Generate repeated content from data files rather than hand-writing each page.
+4. Don't clone the CMS backend; if editing capability is needed, substitute local JSON/Markdown.
 
-## 成功标准
+## Success Criteria
 
-- 原站证据完整：截图、recon JSON、网络清单、素材清单。
-- 克隆站可本地运行，console/page error 清零或解释清楚。
-- `CLONE_REPORT.md` 有结构、视觉、交互、响应式、功能边界评分。
-- `CLONE_AUDIT.md` 没有追踪脚本、原品牌残留、未解释的日文/外链风险。
-- 对做不到的真实后端、专有 API、版权素材明确写边界。
+- Original-site evidence is complete: screenshots, recon JSON, network manifest, and asset manifest.
+- The clone runs locally, with console/page errors cleared to zero or clearly explained.
+- `CLONE_REPORT.md` has scores for structure, visuals, interaction, responsiveness, and functional boundaries.
+- `CLONE_AUDIT.md` has no tracking scripts, original-brand residue, or unexplained Japanese-text/external-link risks.
+- Clearly document boundaries for what can't be done: real backends, proprietary APIs, and copyrighted assets.

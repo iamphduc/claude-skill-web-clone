@@ -1,28 +1,30 @@
-# 复杂度分级与复刻评分
+# Complexity Grading and Reproduction Scoring
 
-用于复刻前预判、复刻后验收，以及向 Jane 解释"这个站能克隆到什么程度"。
+**English** · [中文](assessment.zh-CN.md)
 
-## 复刻模式
+Used for pre-reproduction prediction, post-reproduction acceptance, and explaining to Jane "how faithfully this site can be cloned."
 
-| 模式 | 目标 | 适用场景 |
+## Reproduction modes
+
+| Mode | Goal | Applicable scenario |
 |---|---|---|
-| 忠实复刻 | 尽量保留原源码 / 原布局 / 原交互 | 找到合法源码、单文件站、学习复杂前端技法 |
-| 视觉复刻 | 外观看起来接近，内部实现可替换 | 无源码、商业官网、内容站、组件化重建 |
-| 内容爆改 | 保留原站节奏和视觉语法，换成 Jane 的业务内容 | 把参考站改成自己的站、品牌页、产品介绍 |
-| 技术拆解 | 不急着重建，先确认真实实现 | WebGL/Canvas/复杂交互、AI 分析互相矛盾 |
+| Faithful reproduction | Keep the original source / original layout / original interactions as much as possible | Found legal source, single-file site, learning complex front-end techniques |
+| Visual reproduction | Looks close, internal implementation is replaceable | No source, commercial official sites, content sites, componentized rebuild |
+| Content overhaul | Keep the original site's rhythm and visual grammar, swap in Jane's business content | Turn a reference site into your own site, brand page, product intro |
+| Technical breakdown | Don't rush to rebuild; first confirm the real implementation | WebGL/Canvas/complex interactions, contradictory AI analyses |
 
-## 复杂度 L1-L6
+## Complexity L1-L6
 
-| 等级 | 类型 | 典型信号 | 通常可还原度 | 默认边界 |
+| Level | Type | Typical signals | Usual reproducibility | Default boundary |
 |---|---|---|---|---|
-| L1 | 静态 HTML/CSS | 少量 JS、无框架、页面数少 | 90-98% | 可接近像素级，素材版权另算 |
-| L2 | CMS/企业内容站 | 多页面、CMS 生成、表单/新闻/地区站 | 70-90% | 前台可还原，CMS 后台不克隆 |
-| L3 | React/Vue/Next 内容前端 | hydration、chunk、路由、接口取内容 | 65-90% | 数据/API 可用本地 JSON 替身 |
-| L4 | 动画重品牌站 | GSAP、Lenis、复杂滚动、视频蒙版 | 50-80% | 主视觉可还原，微交互常近似 |
-| L5 | WebGL/Canvas/Three.js | shader、物理、后期合成、GPU 资源 | 30-95% | 有源码可高，没源码先拆解再定 |
-| L6 | SaaS/电商/登录业务系统 | 账号、支付、订单、权限、搜索推荐 | 展示层可做 | 服务端业务逻辑默认不克隆 |
+| L1 | Static HTML/CSS | Little JS, no framework, few pages | 90-98% | Can approach pixel level; asset copyright is separate |
+| L2 | CMS / enterprise content site | Multiple pages, CMS-generated, forms/news/regional sites | 70-90% | Front end can be reproduced; CMS back office not cloned |
+| L3 | React/Vue/Next content front end | hydration, chunks, routing, content fetched via APIs | 65-90% | Data/API can use local JSON stand-ins |
+| L4 | Animation-heavy brand site | GSAP, Lenis, complex scroll, video masks | 50-80% | Key visuals can be reproduced; microinteractions often approximated |
+| L5 | WebGL/Canvas/Three.js | shaders, physics, post-composition, GPU resources | 30-95% | High with source; without source, break down first then decide |
+| L6 | SaaS / e-commerce / login business systems | Accounts, payment, orders, permissions, search & recommendation | Presentation layer doable | Server-side business logic not cloned by default |
 
-## 复刻前预判模板
+## Pre-reproduction prediction template
 
 ```markdown
 ## 复刻前预判
@@ -34,22 +36,22 @@
 - 主要风险: 许可 / 素材 / 登录态 / API / 性能 / WebGL / 响应式
 ```
 
-## 复刻后评分
+## Post-reproduction scoring
 
-每项 0-5 分。只给能被源码、截图、浏览器运行结果支撑的分数。
+0-5 points per item. Only give scores that can be backed by source code, screenshots, or browser run results.
 
-| 维度 | 5 分 | 3 分 | 1 分 |
+| Dimension | 5 points | 3 points | 1 point |
 |---|---|---|---|
-| 源证据 | 找到源码或完整静态资源，关键结论有文件/行号 | 有运行时侦察和资源抓取 | 主要靠目测和推断 |
-| 结构保真 | 信息架构、区块顺序、断点都一致 | 主区块一致，细节有合并/删减 | 只保留大概风格 |
-| 视觉保真 | 字体、间距、颜色、图片比例高度接近 | 主视觉接近，局部比例不同 | 明显像另一个设计 |
-| 动效/交互 | 滚动、悬停、视频、Canvas/WebGL 行为接近 | 只保留核心交互 | 基本静态化 |
-| 响应式 | 桌面/平板/手机都验证且无错位 | 验证 1-2 个宽度 | 移动端明显破版 |
-| 功能完整 | 导航、表单、媒体、外链、本地运行都可用 | 主要浏览路径可用 | 多处死链或报错 |
-| 内容替换 | 已改成 Jane 的内容，替换地图清晰 | 部分改造，仍有原站残留 | 大量原站文案/品牌残留 |
-| 法务/部署风险 | 许可清楚，追踪移除，素材边界明确 | 风险已记录但未完全解决 | 风险不清楚 |
+| Source evidence | Found source or complete static assets, key conclusions have file/line numbers | Has runtime recon and asset harvesting | Mostly relies on visual estimation and inference |
+| Structural fidelity | Information architecture, block order, breakpoints all consistent | Main blocks consistent, details merged/trimmed | Only the general style is preserved |
+| Visual fidelity | Fonts, spacing, colors, image ratios highly close | Key visuals close, some ratios differ | Clearly looks like a different design |
+| Motion/interaction | Scroll, hover, video, Canvas/WebGL behavior close | Only core interactions kept | Basically static |
+| Responsive | Desktop/tablet/mobile all verified with no misalignment | 1-2 widths verified | Obvious layout breakage on mobile |
+| Functional completeness | Navigation, forms, media, external links, local run all work | Main browsing paths work | Many dead links or errors |
+| Content replacement | Already changed to Jane's content, replacement map is clear | Partially reworked, still has original-site remnants | Lots of original-site copy/brand remnants |
+| Legal/deployment risk | Licensing clear, tracking removed, asset boundaries defined | Risks recorded but not fully resolved | Risks unclear |
 
-建议输出：
+Recommended output:
 
 ```markdown
 ## 复刻评分
@@ -64,7 +66,7 @@
 - 总评:
 ```
 
-## 原站 vs 克隆站对比表
+## Original site vs clone site comparison table
 
 ```markdown
 | 模块 | 原站表现 | 克隆实现 | 差异 / 取舍 | 证据 |
